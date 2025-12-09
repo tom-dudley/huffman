@@ -14,11 +14,9 @@ type Node struct {
 	freq int
 	l    *Node
 	r    *Node
-	p    *Node
 }
 
 func buildBinaryTree(frequencies []*Node) *Node {
-	// Construct binary tree
 	for {
 		if len(frequencies) <= 1 {
 			break
@@ -33,10 +31,6 @@ func buildBinaryTree(frequencies []*Node) *Node {
 			freq: l.freq + r.freq,
 			name: l.name + r.name,
 		}
-
-		// TODO: Do we need to know the parent?
-		l.p = p
-		r.p = p
 
 		frequencies = frequencies[2:]
 
