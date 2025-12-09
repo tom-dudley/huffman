@@ -154,15 +154,9 @@ func constructCanoncial(codes map[byte]string) map[byte]string {
 	return newCodes
 }
 
-func main() {
-	buf, err := os.ReadFile("input")
-	if err != nil {
-		panic("Error reading file")
-	}
-
-	fmt.Printf("Got %d bytes of input\n", len(buf))
+func encodeInput(input []byte) {
 	frequenciesMap := map[byte]int{}
-	for _, b := range buf {
+	for _, b := range input {
 		f, ok := frequenciesMap[b]
 		if ok {
 			frequenciesMap[b] = f + 1
@@ -206,29 +200,57 @@ func main() {
 	// printTree(rootNode)
 	codes := buildCodes(rootNode, "", map[byte]string{})
 	codes = constructCanoncial(codes)
-	fmt.Println("Generated canonical huffman codes:")
-	for k, code := range codes {
-		fmt.Printf("    %s : %s\n", string(k), code)
-	}
+	// fmt.Println("Generated canonical huffman codes:")
+	// for k, code := range codes {
+	// 	fmt.Printf("    %s : %s\n", string(k), code)
+	// }
 
 	// TODO: Switch from treating codes as strings to bits
 
-	encodedInputBytes := encode(buf, codes)
+	encodedInputBytes := encode(input, codes)
 	encodedHuffmanBytes := encodeHuffman(codes)
 
 	encoded := append(encodedHuffmanBytes, encodedInputBytes...)
 
-	err = os.WriteFile("output", encoded, 0o600)
+	err := os.WriteFile("encoded", encoded, 0o600)
 	if err != nil {
 		fmt.Printf("Error writing to file: %s\n", err.Error())
 	}
-	fmt.Printf("%x\n", encoded)
 
-	decode(encoded)
+	fmt.Printf("Input: %d bytes\n", len(input))
+	fmt.Printf("Encoded: %d bytes\n", len(encoded))
+	fmt.Printf("%d bytes saved\n", len(input)-len(encoded))
+	fmt.Println("Encoded file saved to: encoded")
+}
+
+func main() {
+	args := os.Args[1:]
+	if len(args) != 1 {
+		fmt.Println("Arg should be encode or decode")
+		os.Exit(1)
+	}
+	switch args[0] {
+	case "encode":
+		buf, err := os.ReadFile("input")
+		if err != nil {
+			panic("Error reading file")
+		}
+
+		encodeInput(buf)
+	case "decode":
+		encoded, err := os.ReadFile("encoded")
+		if err != nil {
+			panic("Error reading file")
+		}
+		output := decode(encoded)
+		fmt.Println(string(output))
+	default:
+		fmt.Println("first arg should be encode or decode")
+		os.Exit(1)
+	}
 }
 
 func decode(encoded []byte) []byte {
-	// Decode
 	numberOfSymbols := encoded[0]
 	var huffmanBytesLength int
 	if numberOfSymbols%2 == 0 {
@@ -242,11 +264,8 @@ func decode(encoded []byte) []byte {
 		fmt.Printf("%s : %s\n", string(symbol), code)
 	}
 
-	buildHuffmanTree(codes)
-
-	// TODO: Construct the tree and walk it to decode
-
-	return nil
+	rootNode := buildHuffmanTree(codes)
+	return decodeWithTree(encoded[huffmanBytesLength+1:], rootNode)
 }
 
 func encode(input []byte, codes map[byte]string) []byte {
@@ -262,8 +281,8 @@ func encode(input []byte, codes map[byte]string) []byte {
 	for i := 0; i < padding; i++ {
 		encoded += "0"
 	}
-	fmt.Printf("Encoded as %d bits\n", len(encoded))
-	fmt.Printf("Encoded as %d bytes\n", len(encoded)/8)
+	// fmt.Printf("Encoded as %d bits\n", len(encoded))
+	// fmt.Printf("Encoded as %d bytes\n", len(encoded)/8)
 
 	encodedInputBytes := []byte{}
 
@@ -315,11 +334,11 @@ func encodeHuffman(codes map[byte]string) []byte {
 	for i := 0; i < len(codebook); i += 2 {
 		var packed byte
 		if i == len(codebook)-1 {
-			fmt.Printf("Packing: %s\n", codebook[i].code)
+			// fmt.Printf("Packing: %s\n", codebook[i].code)
 			packed = byte(len(codebook[i].code)) << 4
 		} else {
-			fmt.Printf("Packing: %s\n", codebook[i].code)
-			fmt.Printf("Packing: %s\n", codebook[i+1].code)
+			// fmt.Printf("Packing: %s\n", codebook[i].code)
+			// fmt.Printf("Packing: %s\n", codebook[i+1].code)
 			packed = byte(len(codebook[i].code))<<4 | byte(len(codebook[i+1].code))
 		}
 		encoded = append(encoded, packed)
@@ -332,7 +351,7 @@ func encodeHuffman(codes map[byte]string) []byte {
 
 func decodeHuffman(encoded []byte) map[byte]string {
 	numberOfSymbols := encoded[0]
-	fmt.Printf("Decoding %d symbols\n", numberOfSymbols)
+	// fmt.Printf("Decoding %d symbols\n", numberOfSymbols)
 	symbols := encoded[1 : numberOfSymbols+1]
 
 	lengths := []int{}
@@ -348,12 +367,64 @@ func decodeHuffman(encoded []byte) map[byte]string {
 
 	codes := map[byte]string{}
 	for i := 0; i < len(symbols); i++ {
-		fmt.Printf("%s : %d\n", string(symbols[i]), lengths[i])
+		// fmt.Printf("%s : %d\n", string(symbols[i]), lengths[i])
 		codes[symbols[i]] = strings.Repeat("0", lengths[i])
 	}
 
 	return constructCanoncial(codes)
 }
 
-func buildHuffmanTree(codes map[byte]string) {
+func buildHuffmanTree(codes map[byte]string) *Node {
+	codebook := sortCodes(codes)
+
+	rootNode := &Node{}
+
+	var currentNode *Node
+	for _, code := range codebook {
+		currentNode = rootNode
+		lastCodeIndex := len(code.code) - 1
+		for i, digit := range code.code {
+			if digit == '0' {
+				if currentNode.l == nil {
+					currentNode.l = &Node{}
+				}
+				currentNode = currentNode.l
+			} else {
+				if currentNode.r == nil {
+					currentNode.r = &Node{}
+				}
+				currentNode = currentNode.r
+			}
+
+			if i == lastCodeIndex {
+				currentNode.char = code.b
+			}
+		}
+	}
+
+	return rootNode
+}
+
+func decodeWithTree(encoded []byte, rootNode *Node) []byte {
+	digitsString := ""
+	for _, b := range encoded {
+		digitsString += fmt.Sprintf("%08b", b)
+	}
+
+	currentNode := rootNode
+	decoded := []byte{}
+	for _, digit := range digitsString {
+		if digit == '0' {
+			currentNode = currentNode.l
+		} else {
+			currentNode = currentNode.r
+		}
+
+		if currentNode.l == nil && currentNode.r == nil {
+			decoded = append(decoded, currentNode.char)
+			currentNode = rootNode
+		}
+	}
+
+	return decoded
 }
