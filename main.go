@@ -17,7 +17,7 @@ type Node struct {
 	p    *Node
 }
 
-func buildBinaryTree(frequencies []Node) *Node {
+func buildBinaryTree(frequencies []*Node) *Node {
 	// Construct binary tree
 	for {
 		if len(frequencies) <= 1 {
@@ -28,8 +28,8 @@ func buildBinaryTree(frequencies []Node) *Node {
 		r := frequencies[1]
 
 		p := &Node{
-			l:    &l,
-			r:    &r,
+			l:    l,
+			r:    r,
 			freq: l.freq + r.freq,
 			name: l.name + r.name,
 		}
@@ -46,12 +46,14 @@ func buildBinaryTree(frequencies []Node) *Node {
 		}
 
 		if p.freq > frequencies[len(frequencies)-1].freq {
-			frequencies = append(frequencies, *p)
+			frequencies = append(frequencies, p)
+		} else if p.freq < frequencies[0].freq {
+			frequencies = slices.Insert(frequencies, 0, p)
 		} else {
 			maxIndex := len(frequencies) - 1
 			for i := 0; i < maxIndex; i++ {
 				if frequencies[i].freq <= p.freq && p.freq <= frequencies[i+1].freq {
-					frequencies = slices.Insert(frequencies, i+1, *p)
+					frequencies = slices.Insert(frequencies, i+1, p)
 					break
 				}
 			}
@@ -155,6 +157,8 @@ func constructCanoncial(codes map[byte]string) map[byte]string {
 }
 
 func encodeInput(input []byte) {
+	input = append(input, 0x00)
+
 	frequenciesMap := map[byte]int{}
 	for _, b := range input {
 		f, ok := frequenciesMap[b]
@@ -165,10 +169,10 @@ func encodeInput(input []byte) {
 		}
 	}
 
-	frequencies := []Node{}
+	frequencies := []*Node{}
 
 	for k, v := range frequenciesMap {
-		frequencies = append(frequencies, Node{char: k, freq: v, name: string(k)})
+		frequencies = append(frequencies, &Node{char: k, freq: v, name: string(k)})
 	}
 
 	// for _, charAndFreq := range frequencies {
@@ -260,9 +264,9 @@ func decode(encoded []byte) []byte {
 	}
 
 	codes := decodeHuffman(encoded[:huffmanBytesLength+1])
-	for symbol, code := range codes {
-		fmt.Printf("%s : %s\n", string(symbol), code)
-	}
+	// for symbol, code := range codes {
+	// 	fmt.Printf("%s : %s\n", string(symbol), code)
+	// }
 
 	rootNode := buildHuffmanTree(codes)
 	return decodeWithTree(encoded[huffmanBytesLength+1:], rootNode)
@@ -422,6 +426,10 @@ func decodeWithTree(encoded []byte, rootNode *Node) []byte {
 
 		if currentNode.l == nil && currentNode.r == nil {
 			decoded = append(decoded, currentNode.char)
+			// If we hit NUL that's the end of the data
+			if currentNode.char == 0x0 {
+				return decoded
+			}
 			currentNode = rootNode
 		}
 	}
