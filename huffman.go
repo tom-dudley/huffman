@@ -150,7 +150,7 @@ func constructCanoncial(codes map[byte]string) map[byte]string {
 	return newCodes
 }
 
-func Encode(input []byte) {
+func Encode(input []byte) []byte {
 	input = append(input, 0x00)
 
 	frequenciesMap := map[byte]int{}
@@ -209,16 +209,7 @@ func Encode(input []byte) {
 	encodedHuffmanBytes := encodeHuffman(codes)
 
 	encoded := append(encodedHuffmanBytes, encodedInputBytes...)
-
-	err := os.WriteFile("encoded", encoded, 0o600)
-	if err != nil {
-		fmt.Printf("Error writing to file: %s\n", err.Error())
-	}
-
-	fmt.Printf("Input: %d bytes\n", len(input))
-	fmt.Printf("Encoded: %d bytes\n", len(encoded))
-	fmt.Printf("%d bytes saved\n", len(input)-len(encoded))
-	fmt.Println("Encoded file saved to: encoded")
+	return encoded
 }
 
 func Decode(encoded []byte) []byte {
