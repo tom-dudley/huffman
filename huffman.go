@@ -1,4 +1,4 @@
-package main
+package huffman
 
 import (
 	"fmt"
@@ -150,7 +150,7 @@ func constructCanoncial(codes map[byte]string) map[byte]string {
 	return newCodes
 }
 
-func encodeInput(input []byte) {
+func Encode(input []byte) {
 	input = append(input, 0x00)
 
 	frequenciesMap := map[byte]int{}
@@ -221,34 +221,7 @@ func encodeInput(input []byte) {
 	fmt.Println("Encoded file saved to: encoded")
 }
 
-func main() {
-	args := os.Args[1:]
-	if len(args) != 1 {
-		fmt.Println("Arg should be encode or decode")
-		os.Exit(1)
-	}
-	switch args[0] {
-	case "encode":
-		buf, err := os.ReadFile("input")
-		if err != nil {
-			panic("Error reading file")
-		}
-
-		encodeInput(buf)
-	case "decode":
-		encoded, err := os.ReadFile("encoded")
-		if err != nil {
-			panic("Error reading file")
-		}
-		output := decode(encoded)
-		fmt.Println(string(output))
-	default:
-		fmt.Println("first arg should be encode or decode")
-		os.Exit(1)
-	}
-}
-
-func decode(encoded []byte) []byte {
+func Decode(encoded []byte) []byte {
 	numberOfSymbols := encoded[0]
 	var huffmanBytesLength int
 	if numberOfSymbols%2 == 0 {
