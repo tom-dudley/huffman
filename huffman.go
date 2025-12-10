@@ -383,11 +383,11 @@ func decodeWithTree(encoded []byte, rootNode *Node) []byte {
 		}
 
 		if currentNode.l == nil && currentNode.r == nil {
-			decoded = append(decoded, currentNode.char)
 			// If we hit NUL that's the end of the data
 			if currentNode.char == 0x0 {
 				return decoded
 			}
+			decoded = append(decoded, currentNode.char)
 			currentNode = rootNode
 		}
 	}
