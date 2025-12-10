@@ -123,7 +123,7 @@ func constructCanoncial(codes map[byte]string) map[byte]string {
 
 		// Increment the bitstring by 1
 		prev := codebook[i-1].code
-		asInt, err := strconv.ParseInt(prev, 2, 8)
+		asInt, err := strconv.ParseInt(prev, 2, 64)
 		if err != nil {
 			fmt.Println(err)
 		}
