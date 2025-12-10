@@ -1,6 +1,7 @@
 package huffman
 
 import (
+	"encoding/binary"
 	"fmt"
 	"os"
 	"slices"
@@ -151,8 +152,6 @@ func constructCanoncial(codes map[byte]string) map[byte]string {
 }
 
 func Encode(input []byte) []byte {
-	input = append(input, 0x00)
-
 	frequenciesMap := map[byte]int{}
 	for _, b := range input {
 		f, ok := frequenciesMap[b]
@@ -208,12 +207,20 @@ func Encode(input []byte) []byte {
 	encodedInputBytes := encode(input, codes)
 	encodedHuffmanBytes := encodeHuffman(codes)
 
-	encoded := append(encodedHuffmanBytes, encodedInputBytes...)
+	numDecodedBytesBuf := make([]byte, 4)
+	binary.BigEndian.PutUint32(numDecodedBytesBuf, uint32(len(input)))
+
+	encoded := []byte{}
+	encoded = append(encoded, numDecodedBytesBuf...)
+	encoded = append(encoded, encodedHuffmanBytes...)
+	encoded = append(encoded, encodedInputBytes...)
 	return encoded
 }
 
 func Decode(encoded []byte) []byte {
-	numberOfSymbols := encoded[0]
+	numDecodedBytes := binary.BigEndian.Uint32(encoded)
+	numberOfSymbols := encoded[4]
+
 	var huffmanBytesLength int
 	if numberOfSymbols%2 == 0 {
 		huffmanBytesLength = int(numberOfSymbols) + int(numberOfSymbols)/2
@@ -221,13 +228,13 @@ func Decode(encoded []byte) []byte {
 		huffmanBytesLength = int(numberOfSymbols) + int(numberOfSymbols)/2 + 1
 	}
 
-	codes := decodeHuffman(encoded[:huffmanBytesLength+1])
+	codes := decodeHuffman(encoded[4 : 4+huffmanBytesLength+1])
 	// for symbol, code := range codes {
 	// 	fmt.Printf("%s : %s\n", string(symbol), code)
 	// }
 
 	rootNode := buildHuffmanTree(codes)
-	return decodeWithTree(encoded[huffmanBytesLength+1:], rootNode)
+	return decodeWithTree(encoded[4+huffmanBytesLength+1:], rootNode, int(numDecodedBytes))
 }
 
 func encode(input []byte, codes map[byte]string) []byte {
@@ -367,7 +374,7 @@ func buildHuffmanTree(codes map[byte]string) *Node {
 	return rootNode
 }
 
-func decodeWithTree(encoded []byte, rootNode *Node) []byte {
+func decodeWithTree(encoded []byte, rootNode *Node, numDecodedBytes int) []byte {
 	digitsString := ""
 	for _, b := range encoded {
 		digitsString += fmt.Sprintf("%08b", b)
@@ -383,11 +390,10 @@ func decodeWithTree(encoded []byte, rootNode *Node) []byte {
 		}
 
 		if currentNode.l == nil && currentNode.r == nil {
-			// If we hit NUL that's the end of the data
-			if currentNode.char == 0x0 {
+			decoded = append(decoded, currentNode.char)
+			if len(decoded) == numDecodedBytes {
 				return decoded
 			}
-			decoded = append(decoded, currentNode.char)
 			currentNode = rootNode
 		}
 	}
